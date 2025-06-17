@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -13,7 +14,8 @@ import (
 	"strings"
 	"sync"
 	"time"
-	// "strconv"
+
+	"github.com/chromedp/chromedp"
 )
 
 // The main function
@@ -24,8 +26,6 @@ func main() {
 	for page := 0; page <= 1; page++ { // 15060
 		// Lets go over the pages.
 		url := fmt.Sprintf("https://www.thermofisher.com/api/search/keyword/docsupport?countryCode=us&language=en&query=*:*&persona=DocSupport&filter=document.result_type_s%%3ASDS&refinementAction=true&personaClicked=true&resultPage=%d&resultsPerPage=60", page)
-		// Lets generate a new filename
-		// fileName := "thermofisher_" + strconv.Itoa(page) + ".json"
 		// Lets get data form the given url.
 		jsonWebContent := getDataFromURL(url)
 		// Parse the Document ID
@@ -57,13 +57,45 @@ func main() {
 		// Loop over the pdf urls.
 		for _, finalURL := range finalPDFUrls {
 			if isUrlValid(finalURL) {
-				time.Sleep(1 * time.Second)
+				getDownloadURL := getFinalURL(finalURL)
 				downloadPDFWaitGroup.Add(1)
-				go downloadPDF(finalURL, outputDir, &downloadPDFWaitGroup) // Try to download PDF
+				go downloadPDF(getDownloadURL, outputDir, &downloadPDFWaitGroup) // Try to download PDF
 			}
 		}
 	}
 	downloadPDFWaitGroup.Wait()
+}
+
+// getFinalURL navigates to a given URL in a visible browser window,
+// waits for navigation/interaction, and returns the current URL.
+func getFinalURL(inputURL string) string {
+	// Set Chrome options: run non-headless
+	opts := append(chromedp.DefaultExecAllocatorOptions[:],
+		chromedp.Flag("headless", true),
+		chromedp.Flag("disable-gpu", false),
+		chromedp.Flag("start-maximized", false),
+	)
+	// Context background.
+	allocCtx, cancelAlloc := chromedp.NewExecAllocator(context.Background(), opts...)
+	// Cancel context
+	defer cancelAlloc()
+	// Context, and cancel.
+	ctx, cancel := chromedp.NewContext(allocCtx)
+	// Cancel once done.
+	defer cancel()
+	// The var to hold the final url.
+	var finalURL string
+	// Run the chrome dp and get the url.
+	err := chromedp.Run(ctx,
+		chromedp.Navigate(inputURL),
+		// chromedp.Sleep(1*time.Second), // Allow time for full page load or manual interaction
+		chromedp.Location(&finalURL),
+	)
+	// Log the errors.
+	if err != nil {
+		log.Println(err)
+	}
+	return finalURL
 }
 
 // directoryExists checks whether a directory exists
