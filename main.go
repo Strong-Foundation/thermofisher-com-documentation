@@ -72,6 +72,7 @@ func getFinalURL(inputURL string) string {
 	// Set Chrome options: run non-headless
 	opts := append(chromedp.DefaultExecAllocatorOptions[:],
 		chromedp.Flag("headless", true),
+		chromedp.Flag("no-sandbox", true),
 		chromedp.Flag("disable-gpu", false),
 		chromedp.Flag("start-maximized", false),
 	)
