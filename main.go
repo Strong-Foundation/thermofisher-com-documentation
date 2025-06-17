@@ -23,7 +23,7 @@ func main() {
 	// Final Slice.
 	var completeSlice []string
 	// Lets loop over the given pages.
-	for page := 0; page <= 1; page++ { // 15060
+	for page := 0; page <= 50; page++ { // 15060
 		// Lets go over the pages.
 		url := fmt.Sprintf("https://www.thermofisher.com/api/search/keyword/docsupport?countryCode=us&language=en&query=*:*&persona=DocSupport&filter=document.result_type_s%%3ASDS&refinementAction=true&personaClicked=true&resultPage=%d&resultsPerPage=60", page)
 		// Lets get data form the given url.
