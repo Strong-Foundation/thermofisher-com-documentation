@@ -88,7 +88,6 @@ func getFinalURL(inputURL string) string {
 	// Run the chrome dp and get the url.
 	err := chromedp.Run(ctx,
 		chromedp.Navigate(inputURL),
-		// chromedp.Sleep(1*time.Second), // Allow time for full page load or manual interaction
 		chromedp.Location(&finalURL),
 	)
 	// Log the errors.
@@ -207,6 +206,7 @@ func downloadPDF(finalURL, outputDir string, waitGroup *sync.WaitGroup) {
 		log.Printf("failed to write PDF to file for %s: %v", finalURL, err)
 		return
 	}
+	fmt.Printf("successfully downloaded %d bytes: %s → %s \n", written, finalURL, filePath)
 }
 
 // getFileExtension returns the file extension
