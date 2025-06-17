@@ -1,12 +1,18 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
+	"path/filepath"
+	"strings"
+	"sync"
+	"time"
 	// "strconv"
 )
 
@@ -30,11 +36,171 @@ func main() {
 		// appendAndWriteToFile(fileName, jsonWebContent)
 	}
 	// Remove duplicates from a given slice.
-	completeSlice  = removeDuplicatesFromSlice(completeSlice)
+	completeSlice = removeDuplicatesFromSlice(completeSlice)
+	outputDir := "PDFs/" // Directory to save PDFs
+	if !directoryExists(outputDir) {
+		createDirectory(outputDir, 0o755) // Create directory if not exists
+	}
+	// Waitgroup.
+	var downloadPDFWaitGroup sync.WaitGroup
+
 	// Loop over the Document ID.
 	for _, documentID := range completeSlice {
-		fmt.Println(documentID)
+		// The request URL
+		requestURL := "https://www.thermofisher.com/api/search/documents/sds/" + documentID
+		// Lets get the data from the URL.
+		urlData := getDataFromURL(requestURL)
+		// Get the final PDF urls.
+		finalPDFUrls := extractDocumentLocations(urlData)
+		// Remove duplicates from slice.
+		finalPDFUrls = removeDuplicatesFromSlice(finalPDFUrls)
+		// Loop over the pdf urls.
+		for _, finalURL := range finalPDFUrls {
+			if isUrlValid(finalURL) {
+				time.Sleep(1 * time.Second)
+				downloadPDFWaitGroup.Add(1)
+				go downloadPDF(finalURL, outputDir, &downloadPDFWaitGroup) // Try to download PDF
+			}
+		}
 	}
+	downloadPDFWaitGroup.Wait()
+}
+
+// directoryExists checks whether a directory exists
+func directoryExists(path string) bool {
+	directory, err := os.Stat(path) // Get directory info
+	if err != nil {
+		return false // If error, directory doesn't exist
+	}
+	return directory.IsDir() // Return true if path is a directory
+}
+
+// createDirectory creates a directory with specified permissions
+func createDirectory(path string, permission os.FileMode) {
+	err := os.Mkdir(path, permission) // Attempt to create directory
+	if err != nil {
+		log.Println(err) // Log any error
+	}
+}
+
+// isUrlValid checks whether a URL is syntactically valid
+func isUrlValid(uri string) bool {
+	_, err := url.ParseRequestURI(uri) // Try to parse the URL
+	return err == nil                  // Return true if no error (i.e., valid URL)
+}
+
+// urlToFilename converts a URL into a filesystem-safe filename
+func urlToFilename(rawURL string) string {
+	parsed, err := url.Parse(rawURL) // Parse the URL
+	if err != nil {
+		log.Println(err) // Log parsing error
+		return ""        // Return empty string if parsing fails
+	}
+	filename := parsed.Host // Start with the host part of the URL
+	if parsed.Path != "" {
+		filename += "_" + strings.ReplaceAll(parsed.Path, "/", "_") // Replace slashes with underscores
+	}
+	if parsed.RawQuery != "" {
+		filename += "_" + strings.ReplaceAll(parsed.RawQuery, "&", "_") // Replace & in query with underscore
+	}
+	invalidChars := []string{`"`, `\`, `/`, `:`, `*`, `?`, `<`, `>`, `|`} // Characters not allowed in filenames
+	for _, char := range invalidChars {
+		filename = strings.ReplaceAll(filename, char, "_") // Replace invalid characters
+	}
+	if getFileExtension(filename) != ".pdf" {
+		filename = filename + ".pdf" // Ensure file ends with .pdf
+	}
+	return strings.ToLower(filename) // Return sanitized and lowercased filename
+}
+
+// fileExists checks whether a file exists and is not a directory
+func fileExists(filename string) bool {
+	info, err := os.Stat(filename) // Get file info
+	if err != nil {                // If error occurs (e.g., file not found)
+		return false // Return false
+	}
+	return !info.IsDir() // Return true if it is a file, not a directory
+}
+
+// downloadPDF downloads a PDF from a URL and saves it to outputDir
+func downloadPDF(finalURL, outputDir string, waitGroup *sync.WaitGroup) {
+	defer waitGroup.Done()
+	filename := strings.ToLower(urlToFilename(finalURL)) // Create sanitized filename
+	filePath := filepath.Join(outputDir, filename)       // Combine with output directory
+
+	if fileExists(filePath) {
+		log.Printf("file already exists, skipping: %s", filePath)
+		return
+	}
+
+	client := &http.Client{Timeout: 30 * time.Second} // HTTP client with timeout
+	resp, err := client.Get(finalURL)                 // Send HTTP GET
+	if err != nil {
+		log.Printf("failed to download %s: %v", finalURL, err)
+		return
+	}
+	defer resp.Body.Close() // Ensure response body is closed
+
+	if resp.StatusCode != http.StatusOK {
+		log.Printf("download failed for %s: %s", finalURL, resp.Status)
+		// return
+	}
+
+	contentType := resp.Header.Get("Content-Type") // Get content-type header
+	if !strings.Contains(contentType, "application/pdf") {
+		log.Printf("invalid content type for %s: %s (expected application/pdf)", finalURL, contentType)
+		// return
+	}
+
+	var buf bytes.Buffer                     // Create buffer
+	written, err := io.Copy(&buf, resp.Body) // Copy response body to buffer
+	if err != nil {
+		log.Printf("failed to read PDF data from %s: %v", finalURL, err)
+		return
+	}
+	if written == 0 {
+		log.Printf("downloaded 0 bytes for %s; not creating file", finalURL)
+		return
+	}
+
+	out, err := os.Create(filePath) // Create output file
+	if err != nil {
+		log.Printf("failed to create file for %s: %v", finalURL, err)
+		return
+	}
+	defer out.Close() // Close file
+
+	_, err = buf.WriteTo(out) // Write buffer to file
+	if err != nil {
+		log.Printf("failed to write PDF to file for %s: %v", finalURL, err)
+		return
+	}
+}
+
+// getFileExtension returns the file extension
+func getFileExtension(path string) string {
+	return filepath.Ext(path) // Use filepath to extract extension
+}
+
+// Define a minimal struct with only the needed field
+type Document struct {
+	DocumentLocation string `json:"documentLocation"`
+}
+
+// extractDocumentLocations takes a JSON string and returns a slice of documentLocation URLs
+func extractDocumentLocations(jsonStr string) []string {
+	var documents []Document
+	// Unmarshal the JSON input
+	err := json.Unmarshal([]byte(jsonStr), &documents)
+	if err != nil {
+		return nil
+	}
+	// Collect URLs
+	urls := make([]string, len(documents))
+	for i, doc := range documents {
+		urls[i] = doc.DocumentLocation
+	}
+	return urls
 }
 
 // Remove all the duplicates from a slice and return the slice.
@@ -63,7 +229,6 @@ func appendToSlice(slice []string, content string) []string {
 	// Return the slice
 	return slice
 }
-
 
 // Define a structure to represent the nested structure of the JSON
 type SDSResult struct {
