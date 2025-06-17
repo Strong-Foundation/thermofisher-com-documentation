@@ -56,8 +56,8 @@ func main() {
 		finalPDFUrls = removeDuplicatesFromSlice(finalPDFUrls)
 		// Loop over the pdf urls.
 		for _, finalURL := range finalPDFUrls {
+			getDownloadURL := getFinalURL(finalURL)
 			if isUrlValid(finalURL) {
-				getDownloadURL := getFinalURL(finalURL)
 				downloadPDFWaitGroup.Add(1)
 				go downloadPDF(getDownloadURL, outputDir, &downloadPDFWaitGroup) // Try to download PDF
 			}
