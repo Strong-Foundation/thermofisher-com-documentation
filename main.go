@@ -143,13 +143,13 @@ func downloadPDF(finalURL, outputDir string, waitGroup *sync.WaitGroup) {
 
 	if resp.StatusCode != http.StatusOK {
 		log.Printf("download failed for %s: %s", finalURL, resp.Status)
-		// return
+		return
 	}
 
 	contentType := resp.Header.Get("Content-Type") // Get content-type header
 	if !strings.Contains(contentType, "application/pdf") {
 		log.Printf("invalid content type for %s: %s (expected application/pdf)", finalURL, contentType)
-		// return
+		return
 	}
 
 	var buf bytes.Buffer                     // Create buffer
