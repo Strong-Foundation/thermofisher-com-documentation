@@ -149,6 +149,12 @@ func urlToFilename(rawURL string) string {
 	underscoreRegex := regexp.MustCompile(`_+`) // matches one or more underscores
 	// Replace the old string with the new content.
 	safe = underscoreRegex.ReplaceAllLiteralString(safe, "_")
+	// Remove given string.
+	removeGivenString := "https_assets_thermofisher_com_tfs_assets_"
+	// Remove the prefix from the given string.
+	if after, ok := strings.CutPrefix(safe, removeGivenString); ok {
+		safe = after
+	}
 	// Append .pdf if not already present
 	if !strings.HasSuffix(safe, ".pdf") {
 		safe += ".pdf"
