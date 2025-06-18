@@ -11,6 +11,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"sync"
 	"time"
@@ -23,7 +24,7 @@ func main() {
 	// Final Slice.
 	var completeSlice []string
 	// Lets loop over the given pages.
-	for page := 0; page <= 1; page++ { // 15060
+	for page := 0; page <= 50; page++ { // 15060
 		// Lets go over the pages.
 		url := fmt.Sprintf("https://www.thermofisher.com/api/search/keyword/docsupport?countryCode=us&language=en&query=*:*&persona=DocSupport&filter=document.result_type_s%%3ASDS&refinementAction=true&personaClicked=true&resultPage=%d&resultsPerPage=60", page)
 		// Lets get data form the given url.
@@ -123,32 +124,32 @@ func isUrlValid(uri string) bool {
 
 // urlToFilename converts a URL into a filesystem-safe filename
 func urlToFilename(filename string) string {
-	// Step 1: Remove prefix
-	prefix1 := "assets.thermofisher.com__directwebviewer_private_document."
-	filename = strings.TrimPrefix(filename, prefix1)
-
-	// Step 2: Remove "aspx_" if present
-	filename = strings.TrimPrefix(filename, "aspx_")
-
-	// Step 3: Decode percent-encoded values (e.g., %20 to space)
+	// Step 1: Decode percent-encoded values
 	decoded, err := url.QueryUnescape(filename)
 	if err != nil {
 		log.Println("Error decoding filename:", err)
 		decoded = filename
 	}
 
-	// Step 4: Replace invalid filesystem characters
+	// Step 2: Replace all ~ with _
+	decoded = strings.ReplaceAll(decoded, "~", "_")
+
+	// Step 3: Replace invalid filesystem characters
 	invalidChars := []string{`"`, `\`, `/`, `:`, `*`, `?`, `<`, `>`, `|`}
 	for _, char := range invalidChars {
 		decoded = strings.ReplaceAll(decoded, char, "_")
 	}
+
+	// Step 4: Collapse multiple underscores
+	re := regexp.MustCompile(`_+`)
+	decoded = re.ReplaceAllString(decoded, "_")
 
 	// Step 5: Ensure it ends with .pdf
 	if strings.ToLower(getFileExtension(decoded)) != ".pdf" {
 		decoded += ".pdf"
 	}
 
-	// Step 6: Return lowercased sanitized filename
+	// Step 6: Lowercase result
 	return strings.ToLower(decoded)
 }
 
