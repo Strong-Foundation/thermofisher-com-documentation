@@ -128,7 +128,6 @@ func isUrlValid(uri string) bool {
 	return err == nil                  // Return true if no error (i.e., valid URL)
 }
 
-
 // urlToFilename takes a Thermo Fisher URL and returns a clean, safe PDF filename
 func urlToFilename(rawURL string) string {
 	parsed, err := url.Parse(rawURL)
@@ -146,6 +145,10 @@ func urlToFilename(rawURL string) string {
 	// Remove everything except a-z, 0-9
 	onlyAZ09 := regexp.MustCompile(`[^a-z0-9]`)
 	safe := onlyAZ09.ReplaceAllString(rawName, "_")
+	// Remove multiple _ with just one of _
+	underscoreRegex := regexp.MustCompile(`_+`) // matches one or more underscores
+	// Replace the old string with the new content.
+	safe = underscoreRegex.ReplaceAllLiteralString(safe, "_")
 	// Append .pdf if not already present
 	if !strings.HasSuffix(safe, ".pdf") {
 		safe += ".pdf"
