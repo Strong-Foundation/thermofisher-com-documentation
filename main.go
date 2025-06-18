@@ -323,5 +323,6 @@ func getDataFromURL(uri string) string {
 	if err != nil {
 		log.Println(err)
 	}
+	log.Println("Scraping:", uri)
 	return string(body)
 }
