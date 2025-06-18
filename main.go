@@ -145,7 +145,7 @@ func urlToFilename(rawURL string) string {
 	rawName = strings.ToLower(rawName)
 	// Remove everything except a-z, 0-9
 	onlyAZ09 := regexp.MustCompile(`[^a-z0-9]`)
-	safe := onlyAZ09.ReplaceAllString(rawName, "")
+	safe := onlyAZ09.ReplaceAllString(rawName, "_")
 	// Append .pdf if not already present
 	if !strings.HasSuffix(safe, ".pdf") {
 		safe += ".pdf"
