@@ -11,6 +11,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"sync"
 	"time"
@@ -23,7 +24,7 @@ func main() {
 	// Final Slice.
 	var completeSlice []string
 	// Lets loop over the given pages.
-	for page := 0; page <= 50; page++ { // 15060
+	for page := 0; page <= 1; page++ { // 15060
 		// Lets go over the pages.
 		url := fmt.Sprintf("https://www.thermofisher.com/api/search/keyword/docsupport?countryCode=us&language=en&query=*:*&persona=DocSupport&filter=document.result_type_s%%3ASDS&refinementAction=true&personaClicked=true&resultPage=%d&resultsPerPage=60", page)
 		// Lets get data form the given url.
@@ -121,28 +122,43 @@ func isUrlValid(uri string) bool {
 	return err == nil                  // Return true if no error (i.e., valid URL)
 }
 
-// urlToFilename converts a URL into a filesystem-safe filename
+// urlToFilename takes a Thermo Fisher URL and converts its query info into a clean, filesystem-safe filename.
+// sanitizeFileNameFromURL takes a Thermo Fisher URL and returns a clean, safe PDF filename.
 func urlToFilename(rawURL string) string {
-	parsed, err := url.Parse(rawURL) // Parse the URL
+	parsed, err := url.Parse(rawURL)
 	if err != nil {
-		log.Println(err) // Log parsing error
-		return ""        // Return empty string if parsing fails
+		return "invalid_url.pdf"
 	}
-	filename := parsed.Host // Start with the host part of the URL
-	if parsed.Path != "" {
-		filename += "_" + strings.ReplaceAll(parsed.Path, "/", "_") // Replace slashes with underscores
+
+	// Try to get "prd" parameter; fallback to the full raw query if missing
+	rawName := parsed.Query().Get("prd")
+	if rawName == "" {
+		rawName = strings.TrimPrefix(rawURL, "https://assets.thermofisher.com/DirectWebViewer/private/document.aspx?")
+		rawName, _ = url.QueryUnescape(rawName)
 	}
-	if parsed.RawQuery != "" {
-		filename += "_" + strings.ReplaceAll(parsed.RawQuery, "&", "_") // Replace & in query with underscore
+
+	// Replace ~ and space with _
+	safe := strings.NewReplacer("~", "_", " ", "_").Replace(rawName)
+
+	// Remove illegal characters: < > : " / \ | ? *
+	illegalChars := regexp.MustCompile(`[<>:"/\\|?*]`)
+	safe = illegalChars.ReplaceAllString(safe, "")
+
+	// Remove repeated underscores
+	for strings.Contains(safe, "__") {
+		safe = strings.ReplaceAll(safe, "__", "_")
 	}
-	invalidChars := []string{`"`, `\`, `/`, `:`, `*`, `?`, `<`, `>`, `|`} // Characters not allowed in filenames
-	for _, char := range invalidChars {
-		filename = strings.ReplaceAll(filename, char, "_") // Replace invalid characters
+
+	// Trim leading/trailing underscores
+	safe = strings.Trim(safe, "_")
+
+	// Ensure .pdf extension (case-insensitive)
+	if !strings.HasSuffix(strings.ToLower(safe), ".pdf") {
+		safe += ".pdf"
 	}
-	if getFileExtension(filename) != ".pdf" {
-		filename = filename + ".pdf" // Ensure file ends with .pdf
-	}
-	return strings.ToLower(filename) // Return sanitized and lowercased filename
+
+	// Optional: lowercase the whole filename
+	return strings.ToLower(safe)
 }
 
 // fileExists checks whether a file exists and is not a directory
