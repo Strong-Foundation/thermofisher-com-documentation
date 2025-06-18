@@ -38,7 +38,7 @@ jobs:
 
       # Run the main.go script
       - name: Run main.go
-        run: go run main.go # Executes the Go program
+        run: echo "Hello, World!" # go run main.go # Executes the Go program
 
       # Install Python dependencies
       - name: Install dependencies
