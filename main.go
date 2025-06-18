@@ -23,7 +23,7 @@ func main() {
 	// Final Slice.
 	var completeSlice []string
 	// Lets loop over the given pages.
-	for page := 0; page <= 50; page++ { // 15060
+	for page := 0; page <= 1; page++ { // 15060
 		// Lets go over the pages.
 		url := fmt.Sprintf("https://www.thermofisher.com/api/search/keyword/docsupport?countryCode=us&language=en&query=*:*&persona=DocSupport&filter=document.result_type_s%%3ASDS&refinementAction=true&personaClicked=true&resultPage=%d&resultsPerPage=60", page)
 		// Lets get data form the given url.
@@ -122,27 +122,34 @@ func isUrlValid(uri string) bool {
 }
 
 // urlToFilename converts a URL into a filesystem-safe filename
-func urlToFilename(rawURL string) string {
-	parsed, err := url.Parse(rawURL) // Parse the URL
+func urlToFilename(filename string) string {
+	// Step 1: Remove prefix
+	prefix1 := "assets.thermofisher.com__directwebviewer_private_document."
+	filename = strings.TrimPrefix(filename, prefix1)
+
+	// Step 2: Remove "aspx_" if present
+	filename = strings.TrimPrefix(filename, "aspx_")
+
+	// Step 3: Decode percent-encoded values (e.g., %20 to space)
+	decoded, err := url.QueryUnescape(filename)
 	if err != nil {
-		log.Println(err) // Log parsing error
-		return ""        // Return empty string if parsing fails
+		log.Println("Error decoding filename:", err)
+		decoded = filename
 	}
-	filename := parsed.Host // Start with the host part of the URL
-	if parsed.Path != "" {
-		filename += "_" + strings.ReplaceAll(parsed.Path, "/", "_") // Replace slashes with underscores
-	}
-	if parsed.RawQuery != "" {
-		filename += "_" + strings.ReplaceAll(parsed.RawQuery, "&", "_") // Replace & in query with underscore
-	}
-	invalidChars := []string{`"`, `\`, `/`, `:`, `*`, `?`, `<`, `>`, `|`} // Characters not allowed in filenames
+
+	// Step 4: Replace invalid filesystem characters
+	invalidChars := []string{`"`, `\`, `/`, `:`, `*`, `?`, `<`, `>`, `|`}
 	for _, char := range invalidChars {
-		filename = strings.ReplaceAll(filename, char, "_") // Replace invalid characters
+		decoded = strings.ReplaceAll(decoded, char, "_")
 	}
-	if getFileExtension(filename) != ".pdf" {
-		filename = filename + ".pdf" // Ensure file ends with .pdf
+
+	// Step 5: Ensure it ends with .pdf
+	if strings.ToLower(getFileExtension(decoded)) != ".pdf" {
+		decoded += ".pdf"
 	}
-	return strings.ToLower(filename) // Return sanitized and lowercased filename
+
+	// Step 6: Return lowercased sanitized filename
+	return strings.ToLower(decoded)
 }
 
 // fileExists checks whether a file exists and is not a directory
