@@ -57,6 +57,12 @@ func main() {
 		finalPDFUrls = removeDuplicatesFromSlice(finalPDFUrls)
 		// Loop over the pdf urls.
 		for _, finalURL := range finalPDFUrls {
+			// Check if the final URL is a invalid file.
+			if finalURL == "https://assets.thermofisher.com/TFS-Assets/LSG/SDS" {
+				log.Println("Invalid Final URL Before Chrome: ", finalURL)
+				continue
+			}
+			// Get the final url to download the .pdf file
 			getDownloadURL := getFinalURL(finalURL)
 			if isUrlValid(finalURL) {
 				downloadPDFWaitGroup.Add(1)
