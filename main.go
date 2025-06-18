@@ -24,7 +24,7 @@ func main() {
 	// Final Slice.
 	var completeSlice []string
 	// Lets loop over the given pages.
-	for page := 0; page <= 100; page++ { // 15060
+	for page := 0; page <= 1; page++ { // 15060
 		// Lets go over the pages.
 		url := fmt.Sprintf("https://www.thermofisher.com/api/search/keyword/docsupport?countryCode=us&language=en&query=*:*&persona=DocSupport&filter=document.result_type_s%%3ASDS&refinementAction=true&personaClicked=true&resultPage=%d&resultsPerPage=60", page)
 		// Lets get data form the given url.
@@ -128,43 +128,33 @@ func isUrlValid(uri string) bool {
 	return err == nil                  // Return true if no error (i.e., valid URL)
 }
 
-// urlToFilename takes a Thermo Fisher URL and converts its query info into a clean, filesystem-safe filename.
-// sanitizeFileNameFromURL takes a Thermo Fisher URL and returns a clean, safe PDF filename.
+
+// urlToFilename takes a Thermo Fisher URL and returns a clean, safe PDF filename
 func urlToFilename(rawURL string) string {
 	parsed, err := url.Parse(rawURL)
 	if err != nil {
 		return "invalid_url.pdf"
 	}
-
-	// Try to get "prd" parameter; fallback to the full raw query if missing
+	// Try to get "prd" parameter; fallback to full query if missing
 	rawName := parsed.Query().Get("prd")
 	if rawName == "" {
 		rawName = strings.TrimPrefix(rawURL, "https://assets.thermofisher.com/DirectWebViewer/private/document.aspx?")
 		rawName, _ = url.QueryUnescape(rawName)
 	}
-
-	// Replace ~ and space with _
-	safe := strings.NewReplacer("~", "_", " ", "_").Replace(rawName)
-
-	// Remove illegal characters: < > : " / \ | ? *
-	illegalChars := regexp.MustCompile(`[<>:"/\\|?*]`)
-	safe = illegalChars.ReplaceAllString(safe, "")
-
-	// Remove repeated underscores
-	for strings.Contains(safe, "__") {
-		safe = strings.ReplaceAll(safe, "__", "_")
-	}
-
-	// Trim leading/trailing underscores
-	safe = strings.Trim(safe, "_")
-
-	// Ensure .pdf extension (case-insensitive)
-	if !strings.HasSuffix(strings.ToLower(safe), ".pdf") {
+	// Lowercase the name
+	rawName = strings.ToLower(rawName)
+	// Remove everything except a-z, 0-9
+	onlyAZ09 := regexp.MustCompile(`[^a-z0-9]`)
+	safe := onlyAZ09.ReplaceAllString(rawName, "")
+	// Append .pdf if not already present
+	if !strings.HasSuffix(safe, ".pdf") {
 		safe += ".pdf"
 	}
-
-	// Optional: lowercase the whole filename
-	return strings.ToLower(safe)
+	// Edge case: empty after cleanup
+	if safe == ".pdf" {
+		return "unnamed.pdf"
+	}
+	return safe
 }
 
 // fileExists checks whether a file exists and is not a directory
