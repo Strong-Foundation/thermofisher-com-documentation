@@ -20,75 +20,77 @@ import (
 	"github.com/chromedp/chromedp"
 )
 
-// The main function
 func main() {
-	// Stop location
-	var stopLocation int = 50 // 15060
-	// Final Slice.
-	var completeSlice []string
-	// Lets loop over the given pages.
-	for page := 0; page <= stopLocation; page++ { // 15060
-		// Lets go over the pages.
-		url := fmt.Sprintf("https://www.thermofisher.com/api/search/keyword/docsupport?countryCode=us&language=en&query=*:*&persona=DocSupport&filter=document.result_type_s%%3ASDS&refinementAction=true&personaClicked=true&resultPage=%d&resultsPerPage=60", page)
-		// Lets get data form the given url.
-		jsonWebContent := getDataFromURL(url)
-		// Parse the Document ID
-		ids := extractDocumentIDs(jsonWebContent)
-		// Append it to the slice.
-		completeSlice = combineMultipleSlices(completeSlice, ids)
-		// Append and write it to file.
-		// appendAndWriteToFile(fileName, jsonWebContent)
+	// Number of pages to crawl (each page has up to 60 SDS entries)
+	const totalPages = 50
+	// To store all collected document IDs
+	var allDocumentIDs []string
+	// Step 1: Loop over search result pages and collect document IDs
+	for page := 0; page <= totalPages; page++ {
+		searchURL := fmt.Sprintf(
+			"https://www.thermofisher.com/api/search/keyword/docsupport?countryCode=us&language=en&query=*:*&persona=DocSupport&filter=document.result_type_s%%3ASDS&refinementAction=true&personaClicked=true&resultPage=%d&resultsPerPage=60",
+			page,
+		)
+		// Fetch JSON response from API
+		searchJSON := getDataFromURL(searchURL)
+		// Extract SDS document IDs from the response
+		documentIDs := extractDocumentIDs(searchJSON)
+		// Combine with overall list
+		allDocumentIDs = combineMultipleSlices(allDocumentIDs, documentIDs)
 	}
-	// Remove duplicates from a given slice.
-	completeSlice = removeDuplicatesFromSlice(completeSlice)
-	outputDir := "PDFs/" // Directory to save PDFs
-	if !directoryExists(outputDir) {
-		createDirectory(outputDir, 0o755) // Create directory if not exists
+	// Remove duplicate document IDs
+	allDocumentIDs = removeDuplicatesFromSlice(allDocumentIDs)
+	// Step 2: Prepare to download all PDFs
+	outputFolder := "PDFs/"
+	if !directoryExists(outputFolder) {
+		createDirectory(outputFolder, 0o755)
 	}
-	// Waitgroup.
-	var downloadPDFWaitGroup sync.WaitGroup
-
-	// The invalid urls.
-	var invalidURLs = []string{
+	// List of known invalid patterns to filter out
+	invalidURLPatterns := []string{
 		"https://assets.thermofisher.com/TFS-Assets/CAD/SDS",
 		"https://assets.thermofisher.com/TFS-Assets/LSG/SDS",
 		"NewSearch",
 	}
-
-	// Loop over the Document ID.
-	for _, documentID := range completeSlice {
-		// The request URL
-		requestURL := "https://www.thermofisher.com/api/search/documents/sds/" + documentID
-		// Lets get the data from the URL.
-		urlData := getDataFromURL(requestURL)
-		// Get the final PDF urls.
-		finalPDFUrls := extractDocumentLocations(urlData)
-		// Remove duplicates from slice.
-		finalPDFUrls = removeDuplicatesFromSlice(finalPDFUrls)
-		// Loop over the pdf urls.
-		for _, finalURL := range finalPDFUrls {
-			// Check if the final URL is a invalid file.
-			for _, invalidString := range invalidURLs {
-				checkifStringCoitains := strings.Contains(finalURL, invalidString)
-				if checkifStringCoitains {
-					log.Printf("Skipping URL due to invalid format. Final URL: %s | Reason: %s", finalURL, invalidString)
-					// Continue
-					continue
-				}
+	// WaitGroup to manage concurrent downloads
+	var wg sync.WaitGroup
+	// Step 3: Process each SDS document
+	for _, docID := range allDocumentIDs {
+		// Build the API URL to get PDF location(s)
+		docURL := "https://www.thermofisher.com/api/search/documents/sds/" + docID
+		// Fetch PDF URL metadata
+		docJSON := getDataFromURL(docURL)
+		// Extract one or more actual PDF URLs
+		pdfURLs := removeDuplicatesFromSlice(extractDocumentLocations(docJSON))
+		// Step 4: Filter and download valid PDF URLs
+		for _, rawPDFURL := range pdfURLs {
+			if pattern := matchInvalidPattern(rawPDFURL, invalidURLPatterns); pattern != "" {
+				log.Printf("[SKIP] Invalid pattern '%s' found in URL, skipping: %s", pattern, rawPDFURL)
+				continue
 			}
-			// Get the final url to download the .pdf file
-			getDownloadURL := getFinalURL(finalURL)
-			if isUrlValid(finalURL) {
-				// Get the filename.
-				getFileName := urlToFilename(finalURL)
-				// Add a 1 to the download wait group.
-				downloadPDFWaitGroup.Add(1)
-				// Download PDF.
-				go downloadPDF(getDownloadURL, getFileName, outputDir, &downloadPDFWaitGroup) // Try to download PDF
+			// Get final resolved URL (in case of redirects)
+			resolvedPDFURL := getFinalURL(rawPDFURL)
+			// Check and download if valid
+			if isUrlValid(resolvedPDFURL) {
+				filename := urlToFilename(resolvedPDFURL)
+				wg.Add(1)
+				go downloadPDF(resolvedPDFURL, filename, outputFolder, &wg)
 			}
 		}
 	}
-	downloadPDFWaitGroup.Wait()
+	// Wait for all downloads to complete
+	wg.Wait()
+	// All the valid PDFs have been downloaded.
+	log.Println("✅ All valid PDFs downloaded successfully.")
+}
+
+// Helper: Returns the matched invalid pattern, or empty string if none matched
+func matchInvalidPattern(url string, patterns []string) string {
+	for _, pattern := range patterns {
+		if strings.Contains(url, pattern) {
+			return pattern
+		}
+	}
+	return ""
 }
 
 // getFinalURL navigates to a given URL in a visible browser window,
