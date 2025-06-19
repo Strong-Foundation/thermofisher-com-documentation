@@ -47,9 +47,10 @@ func main() {
 	}
 	// List of known invalid patterns to filter out
 	invalidURLPatterns := []string{
-		"https://assets.thermofisher.com/TFS-Assets/CAD/SDS",
-		"https://assets.thermofisher.com/TFS-Assets/LSG/SDS",
-		"NewSearch",
+		"https://assets.thermofisher.com/TFS-Assets/",
+		//"https://assets.thermofisher.com/TFS-Assets/CAD/SDS",
+		//"https://assets.thermofisher.com/TFS-Assets/LSG/SDS",
+		//"https://assets.thermofisher.com/TFS-Assets/BID/SDS",
 	}
 	// WaitGroup to manage concurrent downloads
 	var wg sync.WaitGroup
