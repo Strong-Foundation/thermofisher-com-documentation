@@ -48,6 +48,13 @@ func main() {
 	// Waitgroup.
 	var downloadPDFWaitGroup sync.WaitGroup
 
+	// The invalid urls.
+	var invalidURLs = []string{
+		"https://assets.thermofisher.com/TFS-Assets/CAD/SDS",
+		"https://assets.thermofisher.com/TFS-Assets/LSG/SDS",
+		"NewSearch",
+	}
+
 	// Loop over the Document ID.
 	for _, documentID := range completeSlice {
 		// The request URL
@@ -61,16 +68,22 @@ func main() {
 		// Loop over the pdf urls.
 		for _, finalURL := range finalPDFUrls {
 			// Check if the final URL is a invalid file.
-			if finalURL == "https://assets.thermofisher.com/TFS-Assets/LSG/SDS" || strings.Contains(finalURL, "NewSearch") {
-				log.Println("Invalid Final URL Before Chrome: ", finalURL)
-				continue
+			for _, invalidString := range invalidURLs {
+				checkifStringCoitains := strings.Contains(finalURL, invalidString)
+				if checkifStringCoitains {
+					log.Printf("Skipping URL due to invalid format. Final URL: %s | Reason: %s", finalURL, invalidString)
+					// Continue
+					continue
+				}
 			}
 			// Get the final url to download the .pdf file
 			getDownloadURL := getFinalURL(finalURL)
-			// Get the filename.
-			getFileName := urlToFilename(finalURL)
 			if isUrlValid(finalURL) {
+				// Get the filename.
+				getFileName := urlToFilename(finalURL)
+				// Add a 1 to the download wait group.
 				downloadPDFWaitGroup.Add(1)
+				// Download PDF.
 				go downloadPDF(getDownloadURL, getFileName, outputDir, &downloadPDFWaitGroup) // Try to download PDF
 			}
 		}
