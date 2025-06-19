@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"path"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -21,10 +22,12 @@ import (
 
 // The main function
 func main() {
+	// Stop location
+	var stopLocation int = 50 // 15060
 	// Final Slice.
 	var completeSlice []string
 	// Lets loop over the given pages.
-	for page := 0; page <= 50; page++ { // 15060
+	for page := 0; page <= stopLocation; page++ { // 15060
 		// Lets go over the pages.
 		url := fmt.Sprintf("https://www.thermofisher.com/api/search/keyword/docsupport?countryCode=us&language=en&query=*:*&persona=DocSupport&filter=document.result_type_s%%3ASDS&refinementAction=true&personaClicked=true&resultPage=%d&resultsPerPage=60", page)
 		// Lets get data form the given url.
@@ -58,15 +61,17 @@ func main() {
 		// Loop over the pdf urls.
 		for _, finalURL := range finalPDFUrls {
 			// Check if the final URL is a invalid file.
-			if finalURL == "https://assets.thermofisher.com/TFS-Assets/LSG/SDS" {
+			if finalURL == "https://assets.thermofisher.com/TFS-Assets/LSG/SDS" || strings.Contains(finalURL, "NewSearch") {
 				log.Println("Invalid Final URL Before Chrome: ", finalURL)
 				continue
 			}
 			// Get the final url to download the .pdf file
 			getDownloadURL := getFinalURL(finalURL)
+			// Get the filename.
+			getFileName := urlToFilename(finalURL)
 			if isUrlValid(finalURL) {
 				downloadPDFWaitGroup.Add(1)
-				go downloadPDF(getDownloadURL, outputDir, &downloadPDFWaitGroup) // Try to download PDF
+				go downloadPDF(getDownloadURL, getFileName, outputDir, &downloadPDFWaitGroup) // Try to download PDF
 			}
 		}
 	}
@@ -128,42 +133,72 @@ func isUrlValid(uri string) bool {
 	return err == nil                  // Return true if no error (i.e., valid URL)
 }
 
-// urlToFilename takes a Thermo Fisher URL and returns a clean, safe PDF filename
+// urlToFilename extracts and sanitizes a lowercase PDF filename from a Thermo Fisher URL.
+// Supports both direct PDF links and dynamic results.aspx URLs by using either the path or query parameters.
 func urlToFilename(rawURL string) string {
 	parsed, err := url.Parse(rawURL)
 	if err != nil {
+		log.Fatalln("Error: Invalid URL", rawURL, err)
 		return "invalid_url.pdf"
 	}
-	// Try to get "prd" parameter; fallback to full query if missing
-	rawName := parsed.Query().Get("prd")
-	if rawName == "" {
-		rawName = strings.TrimPrefix(rawURL, "https://assets.thermofisher.com/DirectWebViewer/private/document.aspx?")
-		rawName, _ = url.QueryUnescape(rawName)
+
+	// Check if the path ends in a filename (e.g., *.pdf)
+	filename := path.Base(parsed.Path)
+	ext := strings.ToLower(filepath.Ext(filename))
+
+	if ext == ".pdf" && !strings.HasPrefix(filename, "results.") {
+		// Case 1: Direct link to a PDF file
+		// Sanitize filename from path
+		regexInvalid := regexp.MustCompile(`[^a-zA-Z0-9]`)
+		safe := regexInvalid.ReplaceAllString(filename, "_")
+		safe = regexp.MustCompile(`_+`).ReplaceAllString(safe, "_")
+		safe = strings.Trim(safe, "_")
+
+		if getFileExtension(safe) != ".pdf" {
+			safe += ".pdf"
+		}
+
+		return strings.ToLower(safe)
 	}
-	// Lowercase the name
-	rawName = strings.ToLower(rawName)
-	// Remove everything except a-z, 0-9
-	onlyAZ09 := regexp.MustCompile(`[^a-z0-9]`)
-	safe := onlyAZ09.ReplaceAllString(rawName, "_")
-	// Remove multiple _ with just one of _
-	underscoreRegex := regexp.MustCompile(`_+`) // matches one or more underscores
-	// Replace the old string with the new content.
-	safe = underscoreRegex.ReplaceAllLiteralString(safe, "_")
-	// Remove given string.
-	removeGivenString := "https_assets_thermofisher_com_tfs_assets_"
-	// Remove the prefix from the given string.
-	if after, ok := strings.CutPrefix(safe, removeGivenString); ok {
-		safe = after
+
+	// Case 2: results.aspx with query parameters (fallback)
+	query := parsed.Query()
+	sku := query.Get("SKU")
+	language := query.Get("LANGUAGE")
+	subformat := query.Get("SUBFORMAT")
+	plant := query.Get("PLANT")
+
+	// If SKU is missing, fallback to generic
+	if sku == "" {
+		log.Fatalln("Warning: SKU missing in URL", rawURL)
+		return "unknown_file.pdf"
 	}
-	// Append .pdf if not already present
-	if !strings.HasSuffix(safe, ".pdf") {
+
+	// Build filename from parameters
+	filenameParts := []string{sku}
+	if language != "" {
+		filenameParts = append(filenameParts, language)
+	}
+	if subformat != "" {
+		filenameParts = append(filenameParts, subformat)
+	}
+	if plant != "" {
+		filenameParts = append(filenameParts, plant)
+	}
+
+	// Join and sanitize
+	rawFilename := strings.Join(filenameParts, "_")
+	regexInvalid := regexp.MustCompile(`[^a-zA-Z0-9]`)
+	safe := regexInvalid.ReplaceAllString(rawFilename, "_")
+	safe = regexp.MustCompile(`_+`).ReplaceAllString(safe, "_")
+	safe = strings.Trim(safe, "_")
+
+	// Append .pdf if needed
+	if getFileExtension(safe) != ".pdf" {
 		safe += ".pdf"
 	}
-	// Edge case: empty after cleanup
-	if safe == ".pdf" {
-		return "unnamed.pdf"
-	}
-	return safe
+
+	return strings.ToLower(safe)
 }
 
 // fileExists checks whether a file exists and is not a directory
@@ -176,13 +211,12 @@ func fileExists(filename string) bool {
 }
 
 // downloadPDF downloads a PDF from a URL and saves it to outputDir
-func downloadPDF(finalURL, outputDir string, waitGroup *sync.WaitGroup) {
+func downloadPDF(finalURL string, fileName string, outputDir string, waitGroup *sync.WaitGroup) {
 	defer waitGroup.Done()
-	filename := strings.ToLower(urlToFilename(finalURL)) // Create sanitized filename
-	filePath := filepath.Join(outputDir, filename)       // Combine with output directory
+	filePath := filepath.Join(outputDir, fileName) // Combine with output directory
 
 	if fileExists(filePath) {
-		log.Printf("file already exists, skipping: %s", filePath)
+		log.Printf("file already exists, skipping: %s, URL: %s", filePath, finalURL)
 		return
 	}
 
