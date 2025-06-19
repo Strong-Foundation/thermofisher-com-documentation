@@ -10,7 +10,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"path"
+	// "path"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -22,7 +22,7 @@ import (
 
 func main() {
 	// Number of pages to crawl (each page has up to 60 SDS entries)
-	const totalPages = 50
+	const totalPages = 5
 	// To store all collected document IDs
 	var allDocumentIDs []string
 	// Step 1: Loop over search result pages and collect document IDs
@@ -149,72 +149,32 @@ func isUrlValid(uri string) bool {
 	return err == nil                  // Return true if no error (i.e., valid URL)
 }
 
-// urlToFilename extracts and sanitizes a lowercase PDF filename from a Thermo Fisher URL.
-// Supports both direct PDF links and dynamic results.aspx URLs by using either the path or query parameters.
+// urlToFilename formats a safe filename from a URL string.
+// It replaces all non [a-z0-9] characters with '_' and ensures it ends in .pdf
 func urlToFilename(rawURL string) string {
-	parsed, err := url.Parse(rawURL)
-	if err != nil {
-		log.Fatalln("Error: Invalid URL", rawURL, err)
-		return "invalid_url.pdf"
-	}
-
-	// Check if the path ends in a filename (e.g., *.pdf)
-	filename := path.Base(parsed.Path)
-	ext := strings.ToLower(filepath.Ext(filename))
-
-	if ext == ".pdf" && !strings.HasPrefix(filename, "results.") {
-		// Case 1: Direct link to a PDF file
-		// Sanitize filename from path
-		regexInvalid := regexp.MustCompile(`[^a-zA-Z0-9]`)
-		safe := regexInvalid.ReplaceAllString(filename, "_")
-		safe = regexp.MustCompile(`_+`).ReplaceAllString(safe, "_")
-		safe = strings.Trim(safe, "_")
-
-		if getFileExtension(safe) != ".pdf" {
-			safe += ".pdf"
-		}
-
-		return strings.ToLower(safe)
-	}
-
-	// Case 2: results.aspx with query parameters (fallback)
-	query := parsed.Query()
-	sku := query.Get("SKU")
-	language := query.Get("LANGUAGE")
-	subformat := query.Get("SUBFORMAT")
-	plant := query.Get("PLANT")
-
-	// If SKU is missing, fallback to generic
-	if sku == "" {
-		log.Fatalln("Warning: SKU missing in URL", rawURL)
-		return "unknown_file.pdf"
-	}
-
-	// Build filename from parameters
-	filenameParts := []string{sku}
-	if language != "" {
-		filenameParts = append(filenameParts, language)
-	}
-	if subformat != "" {
-		filenameParts = append(filenameParts, subformat)
-	}
-	if plant != "" {
-		filenameParts = append(filenameParts, plant)
-	}
-
-	// Join and sanitize
-	rawFilename := strings.Join(filenameParts, "_")
-	regexInvalid := regexp.MustCompile(`[^a-zA-Z0-9]`)
-	safe := regexInvalid.ReplaceAllString(rawFilename, "_")
+	// Convert to lowercase
+	lower := strings.ToLower(rawURL)
+	// Replace all non a-z0-9 characters with "_"
+	reNonAlnum := regexp.MustCompile(`[^a-z0-9]`)
+	// Replace the invalid with valid stuff.
+	safe := reNonAlnum.ReplaceAllString(lower, "_")
+	// Collapse multiple underscores
 	safe = regexp.MustCompile(`_+`).ReplaceAllString(safe, "_")
+	// Trim leading/trailing underscores
 	safe = strings.Trim(safe, "_")
-
-	// Append .pdf if needed
-	if getFileExtension(safe) != ".pdf" {
-		safe += ".pdf"
+	// Invalid prefix list.
+	var invalidPrefix = []string{
+		"https_assets_thermofisher_com_directwebviewer_private_document_aspx_prd_",
 	}
-
-	return strings.ToLower(safe)
+	// Loop over the invalid.
+	for _, invalidPre := range invalidPrefix {
+		safe = strings.TrimPrefix(safe, invalidPre)
+	}
+	// Add .pdf extension if missing
+	if getFileExtension(safe) != ".pdf" {
+		safe = safe + ".pdf"
+	}
+	return safe
 }
 
 // fileExists checks whether a file exists and is not a directory
