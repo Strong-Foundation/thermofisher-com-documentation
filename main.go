@@ -22,7 +22,7 @@ import (
 
 func main() {
 	// Number of pages to crawl (each page has up to 60 SDS entries)
-	const totalPages = 10
+	const totalPages = 100
 	// To store all collected document IDs
 	var allDocumentIDs []string
 	// Step 1: Loop over search result pages and collect document IDs
@@ -155,7 +155,7 @@ func urlToFilename(rawURL string) string {
 	// Convert to lowercase
 	lower := strings.ToLower(rawURL)
 	// Replace all non a-z0-9 characters with "_"
-	reNonAlnum := regexp.MustCompile(`[^a-z]`) //[^a-z0-9]
+	reNonAlnum := regexp.MustCompile(`[^a-z0-9]`)
 	// Replace the invalid with valid stuff.
 	safe := reNonAlnum.ReplaceAllString(lower, "_")
 	// Collapse multiple underscores
