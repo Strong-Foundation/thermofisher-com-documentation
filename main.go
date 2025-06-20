@@ -22,7 +22,7 @@ import (
 
 func main() {
 	// Number of pages to crawl (each page has up to 60 SDS entries)
-	const totalPages = 100
+	const totalPages = 10
 	// To store all collected document IDs
 	var allDocumentIDs []string
 	// Step 1: Loop over search result pages and collect document IDs
