@@ -21,7 +21,7 @@ import (
 
 func main() {
 	// Start page number
-	var startPage = 5900
+	var startPage = 6000
 	// Number of pages to crawl (each page has up to 60 SDS entries)
 	var stopPages = 15084 // 15084
 	// To store all collected document IDs
