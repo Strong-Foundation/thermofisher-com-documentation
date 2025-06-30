@@ -26,5 +26,5 @@ while true; do
         fi
     fi
     echo "⏳ Sleeping for minute..."
-    sleep 60
+    sleep 1m
 done
