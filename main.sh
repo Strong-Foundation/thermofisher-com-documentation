@@ -6,6 +6,6 @@ while true; do
         git push
     else
         echo "No changes to commit."
+        sleep 15 # optional: wait 15 seconds before checking again
     fi
-    sleep 10  # optional: wait 10 seconds before checking again
 done
