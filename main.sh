@@ -25,6 +25,6 @@ while true; do
             echo "❌ Failed to commit changes."
         fi
     fi
-    echo "⏳ Sleeping for seconds..."
+    echo "⏳ Sleeping for minute..."
     sleep 60
 done
