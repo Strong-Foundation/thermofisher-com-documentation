@@ -38,7 +38,7 @@ jobs:
 
       # Run the main.go script
       - name: Run main.go
-        run: echo "Hello World" # go run main.go # Executes the Go program
+        run: go run main.go # Executes the Go program
 
       # Install Python dependencies
       - name: Install dependencies
@@ -50,11 +50,11 @@ jobs:
 
       # Remove PDFs/ Folder
       - name: Remove PDFs Folder
-        run: rm -rf PDFs/
+        run: echo "Hello World" # rm -rf PDFs/
 
       # Remove GIT history
       - name: Remove GIT history
-        run: git config user.name "github-actions" && git config user.email "github-actions@github.com" && git checkout --orphan latest_branch && git add -A && git commit -am "Initial commit (reset history)" && git branch -D main && git branch -m main && git push -f origin main
+        run: echo "Hello World" # git config user.name "github-actions" && git config user.email "github-actions@github.com" && git checkout --orphan latest_branch && git add -A && git commit -am "Initial commit (reset history)" && git branch -D main && git branch -m main && git push -f origin main
 
       # Commit and push any file changes made by the script
       - name: Push updated files
