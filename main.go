@@ -21,11 +21,18 @@ import (
 
 func main() {
 	// Start page number
-	var startPage = 100
+	var startPage = 200
 	// Number of pages to crawl (each page has up to 60 SDS entries)
-	var stopPages = 150 // 15084
+	var stopPages = 250 // 15084
 	// To store all collected document IDs
 	var allDocumentIDs []string
+	// Prepare to download all PDFs
+	outputFolder := "PDFs/"
+	if !directoryExists(outputFolder) {
+		createDirectory(outputFolder, 0o755)
+	}
+	// WaitGroup to manage concurrent downloads
+	var downloadWaitGroup sync.WaitGroup
 	// Step 1: Loop over search result pages and collect document IDs
 	for page := startPage; page <= stopPages; page++ {
 		searchURL := fmt.Sprintf(
@@ -38,66 +45,36 @@ func main() {
 		documentIDs := extractDocumentIDs(searchJSON)
 		// Combine with overall list
 		allDocumentIDs = combineMultipleSlices(allDocumentIDs, documentIDs)
-	}
-	// Remove duplicate document IDs
-	allDocumentIDs = removeDuplicatesFromSlice(allDocumentIDs)
-	// Step 2: Prepare to download all PDFs
-	outputFolder := "PDFs/"
-	if !directoryExists(outputFolder) {
-		createDirectory(outputFolder, 0o755)
-	}
-	/*
-		// List of known invalid patterns to filter out
-		invalidURLPatterns := []string{
-			"https://assets.thermofisher.com/TFS-Assets/LSG/SDS",
-			"https://assets.thermofisher.com/TFS-Assets/BID/SDS",
-			"https://assets.thermofisher.com/TFS-Assets/BPD/SDS",
-			"https://assets.thermofisher.com/TFS-Assets/BID/SDS",
-			"https://assets.thermofisher.com/TFS-Assets/LPD/SDS",
-			"https://assets.thermofisher.com/TFS-Assets/MBD/SDS",
-			"https://assets.thermofisher.com/TFS-Assets/APD/SDS",
-		}
-	*/
-	// WaitGroup to manage concurrent downloads
-	var downloadWaitGroup sync.WaitGroup
-	// Step 3: Process each SDS document
-	for _, docID := range allDocumentIDs {
-		// Build the API URL to get PDF location(s)
-		docURL := "https://www.thermofisher.com/api/search/documents/sds/" + docID
-		// Fetch PDF URL metadata
-		docJSON := getDataFromURL(docURL)
-		// Call the function to extract the document map from the JSON input
-		pdfURLs := extractPDFNameAndURL(docJSON)
-		// Step 4: Filter and download valid PDF URLs
-		for fileName, remoteURL := range pdfURLs { // Loop over the map entries
-			fileName = strings.ToLower(fileName)
-			/*
-				// Check if the pattern is invalid
-				invalidURLPattern := matchInvalidPattern(remoteURL, invalidURLPatterns)
-				// Check if the invalid pattern is found.
-				if invalidURLPattern != "" {
-					// Log the invalid URL and skip it
-					log.Printf("[SKIP] Invalid pattern %s found in URL skipping: %s", invalidURLPattern, remoteURL)
-					// Continue to the next URL
-					continue
-				}
-			*/
-			if isThermoFisherSDSURL(remoteURL) {
-				log.Printf("[SKIP] Invalid URL %s", remoteURL)
+		// Remove duplicate document IDs
+		allDocumentIDs = removeDuplicatesFromSlice(allDocumentIDs)
+		// Step 3: Process each SDS document
+		for _, docID := range allDocumentIDs {
+			// Build the API URL to get PDF location(s)
+			docURL := "https://www.thermofisher.com/api/search/documents/sds/" + docID
+			// Fetch PDF URL metadata
+			docJSON := getDataFromURL(docURL)
+			// Call the function to extract the document map from the JSON input
+			pdfURLs := extractPDFNameAndURL(docJSON)
+			// Step 4: Filter and download valid PDF URLs
+			for fileName, remoteURL := range pdfURLs { // Loop over the map entries
+				fileName = strings.ToLower(fileName)
+				if isThermoFisherSDSURL(remoteURL) {
+					log.Printf("[SKIP] Invalid URL %s", remoteURL)
 
-			}
-			// Get final resolved URL (in case of redirects)
-			resolvedPDFURL := getFinalURL(remoteURL)
-			// Check and download if valid
-			if isUrlValid(resolvedPDFURL) {
-				filename := urlToFilename(fileName)
-				filePath := filepath.Join(outputFolder, fileName) // Combine with output directory
-				if fileExists(filePath) {
-					log.Printf("File already exists skipping %s URL %s", filePath, resolvedPDFURL)
-					continue
 				}
-				downloadWaitGroup.Add(1)
-				go downloadPDF(resolvedPDFURL, filename, outputFolder, &downloadWaitGroup)
+				// Get final resolved URL (in case of redirects)
+				resolvedPDFURL := getFinalURL(remoteURL)
+				// Check and download if valid
+				if isUrlValid(resolvedPDFURL) {
+					filename := urlToFilename(fileName)
+					filePath := filepath.Join(outputFolder, fileName) // Combine with output directory
+					if fileExists(filePath) {
+						log.Printf("File already exists skipping %s URL %s", filePath, resolvedPDFURL)
+						continue
+					}
+					downloadWaitGroup.Add(1)
+					go downloadPDF(resolvedPDFURL, filename, outputFolder, &downloadWaitGroup)
+				}
 			}
 		}
 	}
@@ -112,18 +89,6 @@ func isThermoFisherSDSURL(url string) bool {
 	const suffix = "/SDS"
 	return strings.HasPrefix(url, prefix) && strings.HasSuffix(url, suffix)
 }
-
-/*
-// Helper: Returns true if any invalid pattern is found in the URL
-func matchInvalidPattern(url string, patterns []string) string {
-	for _, pattern := range patterns {
-		if url == pattern {
-			return pattern
-		}
-	}
-	return "" // Return empty string if no pattern matches
-}
-*/
 
 // getFinalURL navigates to a given URL in a visible browser window,
 // waits for navigation/interaction, and returns the current URL.
