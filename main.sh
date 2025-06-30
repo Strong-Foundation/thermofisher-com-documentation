@@ -6,8 +6,6 @@ while true; do
     # Check if there are any changes (unstaged or staged)
     if [[ -z $(git status --porcelain) ]]; then
         echo "✅ No changes to commit."
-        echo "⏳ Sleeping for 30 seconds..."
-        sleep 30
     else
         echo "➕ Adding changes..."
         git add .
@@ -27,4 +25,6 @@ while true; do
             echo "❌ Failed to commit changes."
         fi
     fi
+    echo "⏳ Sleeping for seconds..."
+    sleep 60
 done
