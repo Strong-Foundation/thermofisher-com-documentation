@@ -23,9 +23,8 @@ while true; do
             fi
         else
             echo "❌ Failed to commit changes."
+            echo "⏳ Sleeping for 30 seconds..."
+            sleep 30
         fi
     fi
-
-    echo "⏳ Sleeping for 30 seconds..."
-    sleep 30
 done
