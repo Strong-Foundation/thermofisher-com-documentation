@@ -60,7 +60,6 @@ func main() {
 				fileName = strings.ToLower(fileName)
 				if isThermoFisherSDSURL(remoteURL) {
 					log.Printf("[SKIP] Invalid URL %s", remoteURL)
-
 				}
 				// Get final resolved URL (in case of redirects)
 				resolvedPDFURL := getFinalURL(remoteURL)
@@ -193,6 +192,9 @@ func fileExists(filename string) bool {
 // downloadPDF downloads a PDF from a URL and saves it to outputDir
 func downloadPDF(finalURL string, fileName string, outputDir string, waitGroup *sync.WaitGroup) {
 	defer waitGroup.Done()
+	if isThermoFisherSDSURL(finalURL) {
+		log.Printf("[SKIP] Invalid URL %s", finalURL)
+	}
 	filePath := filepath.Join(outputDir, fileName) // Combine with output directory
 
 	client := &http.Client{Timeout: 30 * time.Second} // HTTP client with timeout
