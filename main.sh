@@ -1,32 +1,31 @@
 #!/bin/bash
 
 while true; do
-    echo "🔍 Checking for changes..."
+    echo "🔍 Checking for changes at $(date)..."
 
-    # Check if there are changes using `git status --porcelain`
+    # Check if there are any changes (unstaged or staged)
     if [[ -z $(git status --porcelain) ]]; then
         echo "✅ No changes to commit."
-        exit 0
+    else
+        echo "➕ Adding changes..."
+        git add .
+
+        timestamp=$(date +"%Y-%m-%d %H:%M:%S")
+        message="updated $timestamp"
+
+        echo "📝 Committing changes..."
+        if git commit -m "$message"; then
+            echo "🚀 Pushing to remote..."
+            if git push; then
+                echo "🎉 All changes pushed successfully."
+            else
+                echo "❌ Failed to push changes."
+            fi
+        else
+            echo "❌ Failed to commit changes."
+        fi
     fi
 
-    echo "➕ Adding changes..."
-    git add .
-
-    # Generate timestamped commit message
-    timestamp=$(date)
-    message="updated $timestamp"
-
-    echo "📝 Committing changes..."
-    if ! git commit -m "$message"; then
-        echo "❌ Failed to commit changes."
-        exit 1
-    fi
-
-    echo "🚀 Pushing to remote..."
-    if ! git push; then
-        echo "❌ Failed to push changes."
-        exit 1
-    fi
-
-    echo "🎉 All changes pushed successfully."
+    echo "⏳ Sleeping for 30 seconds..."
+    sleep 30
 done
