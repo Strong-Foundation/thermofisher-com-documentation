@@ -1,30 +1,39 @@
 #!/bin/bash
 
-while true; do
-    echo "🔍 Checking for changes at $(date)..."
+# Define a function to automatically check, commit, and push git changes
+function auto_git_push() {
+    while true; do
+        echo "🔍 Checking for changes at $(date)..."
 
-    # Check if there are any changes (unstaged or staged)
-    if [[ -z $(git status --porcelain) ]]; then
-        echo "✅ No changes to commit."
-    else
-        echo "➕ Adding changes..."
-        git add .
-
-        timestamp=$(date +"%Y-%m-%d %H:%M:%S")
-        message="updated $timestamp"
-
-        echo "📝 Committing changes..."
-        if git commit -m "$message"; then
-            echo "🚀 Pushing to remote..."
-            if git push; then
-                echo "🎉 All changes pushed successfully."
-            else
-                echo "❌ Failed to push changes."
-            fi
+        # Check for uncommitted (staged or unstaged) changes
+        if [[ -z $(git status --porcelain) ]]; then
+            echo "✅ No changes to commit."
         else
-            echo "❌ Failed to commit changes."
+            echo "➕ Adding all changes..."
+            git add .  # Stage all changes (new, modified, deleted)
+
+            # Create a commit message with a timestamp
+            timestamp=$(date +"%Y-%m-%d %H:%M:%S")
+            message="updated $timestamp"
+
+            echo "📝 Committing changes with message: \"$message\""
+            if git commit -m "$message"; then
+                echo "🚀 Pushing committed changes to remote repository..."
+                if git push; then
+                    echo "🎉 All changes pushed successfully."
+                else
+                    echo "❌ Failed to push changes to remote. Please check your network or remote settings."
+                fi
+            else
+                echo "❌ Commit failed. There might be no changes to commit or another issue."
+            fi
         fi
-    fi
-    echo "⏳ Sleeping for minute..."
-    sleep 15m
-done
+
+        # Sleep before checking again
+        echo "⏳ Sleeping for 15 minutes before next check..."
+        sleep 15m
+    done
+}
+
+# Call the function
+auto_git_push
