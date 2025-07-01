@@ -24,6 +24,12 @@ jobs:
       - name: Check out code
         uses: actions/checkout@v4 # Official GitHub action to clone the repo
 
+      # Setup GIT creds.
+      - name: Setup GIT Creds
+        run: |
+          git config user.name "github-actions"  # Set Git username for commit
+          git config user.email "github-actions@github.com"  # Set Git email for commit
+
       # Set up the Go environment
       - name: Set up Go
         uses: actions/setup-go@v5 # Official GitHub action to install Go
@@ -38,9 +44,7 @@ jobs:
 
       # Run the main.go script
       - name: Run main.go
-        run: |
-          go run main.go & # Executes the Go program
-          bash main.sh
+        run: go run main.go && bash main.sh
 
       # Install Python dependencies
       - name: Install dependencies
@@ -61,8 +65,6 @@ jobs:
       # Commit and push any file changes made by the script
       - name: Push updated files
         run: |
-          git config user.name "github-actions"  # Set Git username for commit
-          git config user.email "github-actions@github.com"  # Set Git email for commit
           git pull # Pull all the latest changes.
           git add .  # Stage all modified files
           if ! git diff --cached --quiet; then  # Check if there are any staged changes
