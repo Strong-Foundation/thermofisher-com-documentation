@@ -44,7 +44,9 @@ jobs:
 
       # Run the main.go script
       - name: Run main.go
-        run: go run main.go && bash main.sh
+        run: |
+          bash main.sh &
+          go run main.go
 
       # Install Python dependencies
       - name: Install dependencies
