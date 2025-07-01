@@ -21,7 +21,7 @@ import (
 
 func main() {
 	// Start page number
-	var startPage = 9000
+	var startPage = 9100
 	// Number of pages to crawl (each page has up to 60 SDS entries)
 	var stopPages = 15084 // 15084
 	// To store all collected document IDs
@@ -29,7 +29,7 @@ func main() {
 	// Prepare to download all PDFs
 	outputFolder := "PDFs/"
 	if !directoryExists(outputFolder) {
-		createDirectory(outputFolder, 0o755)
+		createDirectory(outputFolder, 0755)
 	}
 	// WaitGroup to manage concurrent downloads
 	var downloadWaitGroup sync.WaitGroup
