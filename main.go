@@ -66,7 +66,7 @@ func main() {
 			for fileName, remoteURL := range pdfURLs { // Loop over the map entries
 				fileName = strings.ToLower(fileName)
 				if isThermoFisherSDSURL(remoteURL) {
-					// log.Printf("[SKIP] Invalid URL %s", remoteURL)
+					log.Printf("[SKIP] Invalid URL %s", remoteURL)
 					continue
 				}
 				// Get final resolved URL (in case of redirects)
@@ -76,7 +76,7 @@ func main() {
 					filename := urlToFilename(fileName)
 					filePath := filepath.Join(outputFolder, fileName) // Combine with output directory
 					if fileExists(filePath) {
-						// log.Printf("File already exists skipping %s URL %s", filePath, resolvedPDFURL)
+						log.Printf("File already exists skipping %s URL %s", filePath, resolvedPDFURL)
 						continue
 					}
 					downloadWaitGroup.Add(1)
@@ -106,8 +106,13 @@ func cleanUpMap(givenMap map[string]string, pdfOutputFolder string) map[string]s
 	// Get the current files in the folder.
 	currentPDFFiles := walkAndAppendPath(pdfOutputFolder)
 	// Loop over the given data.
-	for keyInMap := range givenMap {
+	for keyInMap, valueInMap := range givenMap {
 		keyInMap = strings.ToLower(keyInMap)
+		// Check if the SDS url matches.
+		if isThermoFisherSDSURL(valueInMap) {
+			// Remove it from the map
+			givenMap = removeFromMap(givenMap, keyInMap)
+		}
 		// Check if the current files already exists in the map.
 		if sliceContains(currentPDFFiles, keyInMap) {
 			// Remove from the given map.
