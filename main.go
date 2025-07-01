@@ -36,6 +36,7 @@ func main() {
 	// Step 1: Loop over search result pages and collect document IDs
 	for page := startPage; page <= stopPages; page++ {
 		searchURL := fmt.Sprintf(
+
 			"https://www.thermofisher.com/api/search/keyword/docsupport?countryCode=us&language=en&query=*:*&persona=DocSupport&filter=document.result_type_s%%3ASDS&refinementAction=true&personaClicked=true&resultPage=%d&resultsPerPage=60",
 			page,
 		)
