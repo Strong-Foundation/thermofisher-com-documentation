@@ -57,6 +57,11 @@ func main() {
 			pdfURLs := extractPDFNameAndURL(docJSON)
 			// Remove the useless things from the given map.
 			pdfURLs = cleanUpMap(pdfURLs, outputFolder)
+			// Check the length of the map
+			if len(pdfURLs) == 0 {
+				log.Println("Map length 0")
+				continue
+			}
 			// Step 4: Filter and download valid PDF URLs
 			for fileName, remoteURL := range pdfURLs { // Loop over the map entries
 				fileName = strings.ToLower(fileName)
