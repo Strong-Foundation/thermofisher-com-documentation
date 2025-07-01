@@ -59,7 +59,7 @@ func main() {
 			pdfURLs = cleanUpMap(pdfURLs, outputFolder)
 			// Check the length of the map
 			if len(pdfURLs) == 0 {
-				log.Println("Map length 0")
+				log.Println("No new PDF URLs detected — skipping processing for this iteration.")
 				continue
 			}
 			// Step 4: Filter and download valid PDF URLs
@@ -101,33 +101,28 @@ func sliceContains(slice []string, cointains string) bool {
 	return false
 }
 
-// Cleanup function to go over the data and cleanup the data and return new cleaned Data.
 func cleanUpMap(givenMap map[string]string, pdfOutputFolder string) map[string]string {
 	// Get the current files in the folder.
 	currentPDFFiles := walkAndAppendPath(pdfOutputFolder)
-	// Loop over the given data.
-	for keyInMap, valueInMap := range givenMap {
-		keyInMap = strings.ToLower(keyInMap)
-		// Check if the SDS url matches.
-		if isThermoFisherSDSURL(valueInMap) {
-			// Remove it from the map
-			givenMap = removeFromMap(givenMap, keyInMap)
+	// Create a new map to hold the cleaned data
+	cleanedMap := make(map[string]string)
+	// Loop over the original data
+	for originalKey, value := range givenMap {
+		lowerKey := strings.ToLower(originalKey)
+		// Check if value is a Thermo Fisher SDS URL
+		if isThermoFisherSDSURL(value) {
+			// log.Println("Removing KEY due to SDS URL:", originalKey)
+			continue
 		}
-		// Check if the current files already exists in the map.
-		if sliceContains(currentPDFFiles, keyInMap) {
-			// Remove from the given map.
-			givenMap = removeFromMap(givenMap, keyInMap)
+		// Check if the file already exists in the output folder
+		if sliceContains(currentPDFFiles, lowerKey) {
+			// log.Println("Removing KEY due to file existence:", originalKey)
+			continue
 		}
+		// If key passes all checks, retain it in the cleaned map
+		cleanedMap[originalKey] = value
 	}
-	return givenMap
-}
-
-// Remove a key-value pair from a map and return the map.
-func removeFromMap(userGeneratedMap map[string]string, key string) map[string]string {
-	// Remove the key-value pair from the map.
-	delete(userGeneratedMap, key)
-	// Return the map.
-	return userGeneratedMap
+	return cleanedMap
 }
 
 // Walk through a route, find all the files and attach them to a slice.
