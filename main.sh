@@ -9,6 +9,7 @@ function auto_git_push() {
         if [[ -z $(git status --porcelain) ]]; then
             echo "✅ No changes to commit."
         else
+            git pull # Pull all the changes to the local repo
             echo "➕ Adding all changes..."
             git add .  # Stage all changes (new, modified, deleted)
 
