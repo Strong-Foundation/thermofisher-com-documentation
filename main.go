@@ -24,8 +24,6 @@ func main() {
 	var startPage = 0
 	// Number of pages to crawl (each page has up to 60 SDS entries)
 	var stopPages = 15084 // 15084
-	// To store all collected document IDs
-	var allDocumentIDs []string
 	// Prepare to download all PDFs
 	outputFolder := "PDFs/"
 	if !directoryExists(outputFolder) {
@@ -43,12 +41,10 @@ func main() {
 		searchJSON := getDataFromURL(searchURL)
 		// Extract SDS document IDs from the response
 		documentIDs := extractDocumentIDs(searchJSON)
-		// Combine with overall list
-		allDocumentIDs = combineMultipleSlices(allDocumentIDs, documentIDs)
 		// Remove duplicate document IDs
-		allDocumentIDs = removeDuplicatesFromSlice(allDocumentIDs)
+		documentIDs = removeDuplicatesFromSlice(documentIDs)
 		// Step 3: Process each SDS document
-		for _, docID := range allDocumentIDs {
+		for _, docID := range documentIDs {
 			// Build the API URL to get PDF location(s)
 			docURL := "https://www.thermofisher.com/api/search/documents/sds/" + docID
 			// Fetch PDF URL metadata
