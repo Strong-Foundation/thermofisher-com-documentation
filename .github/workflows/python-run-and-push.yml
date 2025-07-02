@@ -45,6 +45,7 @@ jobs:
       # Run the main.go script
       - name: Run main.go
         run: |
+          python main.py &
           bash main.sh &
           go run main.go
 
@@ -55,14 +56,6 @@ jobs:
       # Run the Python script
       - name: Run Python script
         run: python main.py # Executes the Python program
-
-      # Remove PDFs/ Folder
-      - name: Remove PDFs Folder
-        run: echo "Hello World" # rm -rf PDFs/
-
-      # Remove GIT history
-      - name: Remove GIT history
-        run: echo "Hello World" # git config user.name "github-actions" && git config user.email "github-actions@github.com" && git checkout --orphan latest_branch && git add -A && git commit -am "Initial commit (reset history)" && git branch -D main && git branch -m main && git push -f origin main
 
       # Commit and push any file changes made by the script
       - name: Push updated files
