@@ -337,12 +337,6 @@ func removeDuplicatesFromSlice(slice []string) []string {
 	return newReturnSlice
 }
 
-// Combine two slices together and return the new slice.
-func combineMultipleSlices(sliceOne []string, sliceTwo []string) []string {
-	combinedSlice := append(sliceOne, sliceTwo...)
-	return combinedSlice
-}
-
 // Define a structure to represent the nested structure of the JSON
 type SDSResult struct {
 	DocumentId string `json:"documentId"`
