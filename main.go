@@ -256,7 +256,7 @@ func downloadPDF(finalURL string, fileName string, outputDir string, waitGroup *
 	defer waitGroup.Done()
 	filePath := filepath.Join(outputDir, fileName) // Combine with output directory
 
-	client := &http.Client{Timeout: 30 * time.Second} // HTTP client with timeout
+	client := &http.Client{Timeout: 10 * time.Second} // HTTP client with timeout
 	resp, err := client.Get(finalURL)                 // Send HTTP GET
 	if err != nil {
 		log.Printf("failed to download %s %v", finalURL, err)
