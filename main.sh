@@ -33,7 +33,7 @@ function auto_git_push() {
 
         # Sleep before checking again
         echo "⏳ Sleeping for ${sleep_timer_minutes} minutes before next check..."
-        sleep $sleep_timer_minutesm
+        sleep "$sleep_timer_minutes"m
     done
 }
 
