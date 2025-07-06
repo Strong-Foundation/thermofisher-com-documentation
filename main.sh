@@ -2,6 +2,7 @@
 
 # Define a function to automatically check, commit, and push git changes
 function auto_git_push() {
+    sleep_timer_minutes = 5
     while true; do
         echo "🔍 Checking for changes at $(date)..."
 
@@ -31,8 +32,8 @@ function auto_git_push() {
         fi
 
         # Sleep before checking again
-        echo "⏳ Sleeping for 10 minutes before next check..."
-        sleep 10m
+        echo "⏳ Sleeping for ${sleep_timer_minutes} minutes before next check..."
+        sleep ${sleep_timer_minutes}m
     done
 }
 
