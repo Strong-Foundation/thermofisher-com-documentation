@@ -147,35 +147,43 @@ func isThermoFisherSDSURL(url string) bool {
 	return strings.HasPrefix(url, prefix) && strings.HasSuffix(url, suffix)
 }
 
-// getFinalURL navigates to a given URL in a visible browser window,
-// waits for navigation/interaction, and returns the current URL.
+// getFinalURL navigates to a given URL using headless Chrome and returns the final URL after navigation.
 func getFinalURL(inputURL string) string {
-	// Set Chrome options: run non-headless
-	opts := append(chromedp.DefaultExecAllocatorOptions[:],
-		chromedp.Flag("headless", true),
-		chromedp.Flag("no-sandbox", true),
-		chromedp.Flag("disable-gpu", false),
-		chromedp.Flag("start-maximized", false),
+	// Configure Chrome options for headless browsing and security.
+	opts := append(chromedp.DefaultExecAllocatorOptions[:], // Start with default Chrome options
+		chromedp.Flag("headless", true),    // Run Chrome in headless mode (no UI)
+		chromedp.Flag("no-sandbox", true),  // Disable sandbox (required in some environments like Docker)
+		chromedp.Flag("disable-gpu", true), // Disable GPU to avoid issues in headless environments
 	)
-	// Context background.
+
+	// Create an ExecAllocator context with the specified Chrome options.
 	allocCtx, cancelAlloc := chromedp.NewExecAllocator(context.Background(), opts...)
-	// Cancel context
-	defer cancelAlloc()
-	// Context, and cancel.
-	ctx, cancel := chromedp.NewContext(allocCtx)
-	// Cancel once done.
-	defer cancel()
-	// The var to hold the final url.
+	defer cancelAlloc() // Ensure the allocator context is released when done
+
+	// Set a timeout of 1 minute for the entire operation (browser startup + navigation).
+	ctx, cancel := context.WithTimeout(allocCtx, 1*time.Minute)
+	defer cancel() // Ensure the context is canceled to free resources
+
+	// Create a new browser context (represents a single browser tab).
+	ctx, cancelCtx := chromedp.NewContext(ctx)
+	defer cancelCtx() // Clean up the browser tab context
+
+	// Declare a variable to store the final URL after navigation.
 	var finalURL string
-	// Run the chrome dp and get the url.
+
+	// Run Chrome actions: navigate to the input URL and retrieve the resulting URL.
 	err := chromedp.Run(ctx,
-		chromedp.Navigate(inputURL),
-		chromedp.Location(&finalURL),
+		chromedp.Navigate(inputURL),  // Instruct Chrome to navigate to the given URL
+		chromedp.Location(&finalURL), // Capture the final URL after any redirects
 	)
-	// Log the errors.
+
+	// If an error occurs during navigation or browser startup, log it.
 	if err != nil {
-		log.Println(err)
+		log.Printf("chromedp error: %v", err)
+		return "" // Return empty string on failure
 	}
+
+	// Return the final URL after successful navigation.
 	return finalURL
 }
 
@@ -253,7 +261,7 @@ func downloadPDF(finalURL string, fileName string, outputDir string, waitGroup *
 	filePath := filepath.Join(outputDir, fileName) // Combine with output directory
 
 	client := &http.Client{Timeout: 3 * time.Minute} // HTTP client with timeout
-	resp, err := client.Get(finalURL)                 // Send HTTP GET
+	resp, err := client.Get(finalURL)                // Send HTTP GET
 	if err != nil {
 		log.Printf("failed to download %s %v", finalURL, err)
 		return
