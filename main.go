@@ -160,8 +160,8 @@ func getFinalURL(inputURL string) string {
 	allocCtx, cancelAlloc := chromedp.NewExecAllocator(context.Background(), opts...)
 	defer cancelAlloc() // Ensure the allocator context is released when done
 
-	// Set a timeout of 1 minute for the entire operation (browser startup + navigation).
-	ctx, cancel := context.WithTimeout(allocCtx, 1*time.Minute)
+	// Set a timeout of minutes for the entire operation (browser startup + navigation).
+	ctx, cancel := context.WithTimeout(allocCtx, 3*time.Minute)
 	defer cancel() // Ensure the context is canceled to free resources
 
 	// Create a new browser context (represents a single browser tab).
