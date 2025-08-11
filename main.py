@@ -83,6 +83,6 @@ def main() -> None:
                 f"Uppercase letter found in filename: {pdf_file}"
             )  # Informative message
 
-while True:
-    # Run the main function
-    main()  # Invoke main to start processing
+
+# Run the main function
+main()  # Invoke main to start processing
