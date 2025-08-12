@@ -4,30 +4,31 @@ import (
 	"log"           // Importing log package for error logging
 	"os"            // Importing os package to work with file system
 	"path/filepath" // Importing filepath for handling file paths
-	"strings"       // Importing strings package for string operations
 )
 
 func main() {
 	localFileName := "downloaded.txt" // File that stores already processed file names
 
 	// Find all .pdf files in the "PDFs/" directory and return a slice of file names
-	findTxtFiles := walkAndAppendPath("PDFs/", ".pdf")
-
-	// The func var to hold the content.
-	var currentFileContent string
+	findPDFFiles := walkAndAppendPath("PDFs/", ".pdf")
 
 	// Check if the file exists.
 	if fileExists(localFileName) {
-		// Read the contents of the local file only once
-		currentFileContent = readAFileAsString(localFileName)
+		// Remove the file.
+		removeFile(localFileName)
 	}
 
 	// Loop over the found text files
-	for _, txtFile := range findTxtFiles {
-		// If the file name is not already in the local file, append it
-		if !strings.Contains(currentFileContent, txtFile) {
-			appendAndWriteToFile(localFileName, txtFile)
-		}
+	for _, pdfFiles := range findPDFFiles {
+		appendAndWriteToFile(localFileName, pdfFiles)
+	}
+}
+
+// Remove a file from the file system
+func removeFile(path string) {
+	err := os.Remove(path)
+	if err != nil {
+		log.Println(err)
 	}
 }
 
