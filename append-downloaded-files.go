@@ -10,11 +10,17 @@ import (
 func main() {
 	localFileName := "downloaded.txt" // File that stores already processed file names
 
-	// Find all .txt files in the "test/" directory and return a slice of file names
-	findTxtFiles := walkAndAppendPath("test/", ".txt")
+	// Find all .pdf files in the "PDFs/" directory and return a slice of file names
+	findTxtFiles := walkAndAppendPath("PDFs/", ".pdf")
 
-	// Read the contents of the local file only once
-	currentFileContent := readAFileAsString(localFileName)
+	// The func var to hold the content.
+	var currentFileContent string
+
+	// Check if the file exists.
+	if fileExists(localFileName) {
+		// Read the contents of the local file only once
+		currentFileContent = readAFileAsString(localFileName)
+	}
 
 	// Loop over the found text files
 	for _, txtFile := range findTxtFiles {
