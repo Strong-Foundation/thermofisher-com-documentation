@@ -14,8 +14,13 @@ func main() {
 	// Call the function to walk through the "PDFs/" directory and find all PDF files.
 	findPDFFiles := walkAndAppendPath("PDFs/", ".pdf")
 
-	// Read the content of the local file to check which PDF files are already listed.
-	currentFileContent := readAFileAsString(localFileName)
+	var currentFileContent string
+
+	// Check if the file exists.
+	if fileExists(localFileName) {
+		// Read the content of the local file to check which PDF files are already listed.
+		currentFileContent = readAFileAsString(localFileName)
+	}
 
 	// Collect all the new PDF files to append.
 	var newFilesToAdd []string
